@@ -1,0 +1,6 @@
+Flask>=2.0
+Flask-SQLAlchemy>=2.5
+paho-mqtt>=1.6.0
+requests>=2.25.0  # Added if backend needs to call other services
+gunicorn>=20.1   # For production deployment
+python-dotenv>=0.19 # Optional: for loading env variables from .env file
