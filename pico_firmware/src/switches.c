@@ -1,5 +1,5 @@
 #include "switches.h"
-#include "pico/stdlib.h"
+#include "pico/stdlib.h" // Includes stdint.h types
 #include "hardware/gpio.h"
 
 // --- Debouncing Parameters ---
@@ -7,7 +7,7 @@
 
 // --- Internal State for Debouncing ---
 typedef struct {
-    uint pin;
+    uint32_t pin;           // Use uint32_t for the pin number
     bool raw_state;         // Current unfiltered reading
     bool debounced_state;   // Stable state after debouncing
     bool changed;           // Flag if debounced_state changed
@@ -17,12 +17,13 @@ typedef struct {
 static switch_debounce_t switch_state[2];
 
 // --- Initialization ---
-void init_switches(uint sw1_pin, uint sw2_pin) {
+// Use uint32_t for pin numbers
+void init_switches(uint32_t sw1_pin, uint32_t sw2_pin) {
     // Switch 1
     gpio_init(sw1_pin);
     gpio_set_dir(sw1_pin, GPIO_IN);
     gpio_pull_up(sw1_pin); // Enable internal pull-up (assumes switches connect pin to GND)
-    switch_state[0].pin = sw1_pin;
+    switch_state[0].pin = sw1_pin; // Store uint32_t
     switch_state[0].raw_state = gpio_get(sw1_pin);
     switch_state[0].debounced_state = switch_state[0].raw_state;
     switch_state[0].changed = false;
@@ -32,7 +33,7 @@ void init_switches(uint sw1_pin, uint sw2_pin) {
     gpio_init(sw2_pin);
     gpio_set_dir(sw2_pin, GPIO_IN);
     gpio_pull_up(sw2_pin);
-    switch_state[1].pin = sw2_pin;
+    switch_state[1].pin = sw2_pin; // Store uint32_t
     switch_state[1].raw_state = gpio_get(sw2_pin);
     switch_state[1].debounced_state = switch_state[1].raw_state;
     switch_state[1].changed = false;
@@ -40,12 +41,13 @@ void init_switches(uint sw1_pin, uint sw2_pin) {
 }
 
 // --- Update and Debounce Switches ---
-void update_switch_status_registers(volatile uint8_t *registers, uint sw1_pin, uint sw2_pin) {
+// Use uint32_t for pin numbers (though they are not used directly here, use stored values)
+void update_switch_status_registers(volatile uint8_t *registers, uint32_t sw1_pin, uint32_t sw2_pin) {
     uint32_t now = time_us_32();
     bool needs_register_update = false;
 
     for (int i = 0; i < 2; i++) {
-        bool current_reading = gpio_get(switch_state[i].pin);
+        bool current_reading = gpio_get(switch_state[i].pin); // Use stored pin number
 
         if (current_reading != switch_state[i].raw_state) {
             // State differs from last reading, reset debounce timer
@@ -71,6 +73,7 @@ void update_switch_status_registers(volatile uint8_t *registers, uint sw1_pin, u
     }
 
     // --- Update Register if any debounced state changed ---
+    // Only update register if a stable change was detected to avoid constant volatile writes
     if (needs_register_update) {
         uint8_t status_byte = 0;
         // Remember: gpio_get reads 1 if high (not pressed with pull-up), 0 if low (pressed)
@@ -80,6 +83,6 @@ void update_switch_status_registers(volatile uint8_t *registers, uint sw1_pin, u
         if (!switch_state[1].debounced_state) { // Bit 1 for Switch 2 pressed (LOW)
             status_byte |= (1 << 1);
         }
-        registers[REG_SWITCH_STATUS] = status_byte;
+        registers[REG_SWITCH_STATUS] = status_byte; // Perform volatile write
     }
 }
